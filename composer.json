@@ -1,0 +1,8 @@
+{
+  "name": "symbiotic/btc-puzzle",
+  "version": "1.0.0",
+  "require": {
+    "php": ">=8.0",
+    "ext-gmp": "*"
+  }
+}
