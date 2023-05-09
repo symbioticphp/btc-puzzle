@@ -1,8 +1,13 @@
 {
   "name": "symbiotic/btc-puzzle",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "require": {
     "php": ">=8.0",
     "ext-gmp": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Symbiotic\\BtcPuzzle\\": "src/"
+    }
   }
 }
