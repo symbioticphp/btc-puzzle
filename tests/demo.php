@@ -4,7 +4,8 @@ include_once dirname(__DIR__) . '/src/BitcoinECDSA.php';
 include_once dirname(__DIR__) . '/src/Config.php';
 include_once dirname(__DIR__) . '/src/Gmp.php';
 include_once dirname(__DIR__) . '/src/Range.php';
-include_once dirname(__DIR__) . '/src/RangesLog.php';
+include_once dirname(__DIR__) . '/src/Log/UserSectorSignaturesLogInterface.php';
+include_once dirname(__DIR__) . '/src/Log/FileUserSectorSignaturesLog.php';
 include_once dirname(__DIR__) . '/src/Sector.php';
 include_once dirname(__DIR__) . '/src/SignatureGenerator.php';
 include_once dirname(__DIR__) . '/src/SignatureController.php';
@@ -25,7 +26,7 @@ $sectorNumber = 32352000;
 $user_id = 1;
 
 
-$generator = new \Symbiotic\BtcPuzzle\SignatureGenerator($config);
+$generator = new \Symbiotic\BtcPuzzle\SignatureGenerator($config->getToken(),$config->getSecret());
 
 $sector = new \Symbiotic\BtcPuzzle\Sector($puzzleId, $sectorNumber);
 $address = $generator->generateSectorAddress($config->getToken(), $sector, $user_id);
@@ -72,9 +73,9 @@ echo 'Range sectors: ' . implode(',', $sectorids) . PHP_EOL;
 
 
 $query = [
-    'puzzleId' => $puzzleId,
-    'user_id' => $user_id,
-    'sectorNumber' => $sectorNumber,
+    'puzzleId' =>(string) $puzzleId,
+    'user_id' => (string)$user_id,
+    'sectorNumber' =>(string) $sectorNumber,
     'token' => $config->getToken(),
     'action' => 'generateSignature'
 ];
@@ -84,8 +85,8 @@ echo PHP_EOL . PHP_EOL . 'Controller:' . PHP_EOL;
 echo 'Sector response:  ' . $controller->dispatch() . PHP_EOL;
 
 $query = [
-    'puzzleId' => $puzzleId,
-    'userId' => 1,
+    'puzzleId' => (string)$puzzleId,
+    'userId' => '1',
     'hash' => $hash,
     'action' => 'checkSectorHash',
 

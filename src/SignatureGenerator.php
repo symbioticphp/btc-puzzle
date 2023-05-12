@@ -1,28 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Symbiotic\BtcPuzzle;
 
 
+use JetBrains\PhpStorm\ArrayShape;
+use Symbiotic\BtcPuzzle\Log\UserSectorSignaturesLogInterface;
+
 class SignatureGenerator
 {
-    private Config $config;
-    /**
-     * @var null |RangesLog
-     */
-    private $log = null;
 
     /**
-     * @param Config $config
+     * @param string                                $token
+     * @param string                                $secret
+     * @param UserSectorSignaturesLogInterface|null $log
      */
-    public function __construct(Config $config)
-    {
-        $logPath = $config->getLogPath();
-        if (!empty($logPath)) {
-            $this->log = new RangesLog($logPath);
-        }
-
-        $this->config = $config;
-    }
+    public function __construct(
+        private string $token,
+        private string $secret,
+        private UserSectorSignaturesLogInterface|null $log = null
+    ) {}
 
     /**
      * @param string $token
@@ -31,28 +29,62 @@ class SignatureGenerator
      *
      * @return array
      */
+    #[ArrayShape([
+        'sectorHash' => "string",
+        'userSectorHash' => "string",
+        'signatureBlowfish' => "string",
+        'address' => "mixed|String"
+    ])]
     public function generateSectorSignature(string $token, Sector $sector, int $user_id): array
     {
         $addressData = $this->generateSectorAddress($token, $sector, $user_id);
         $sectorHash = $this->getSectorHash($sector->getPuzzleId(), $sector->getSectorNumber());
-        if ($this->log) {
-            $this->log->writeSector($sectorHash, $sector->getSectorNumber(), $user_id);
-        }
+        $userSectorHash = $this->getUserSectorHash($sector->getPuzzleId(), $sector->getSectorNumber(), $user_id);
+
+        $this->log?->addSector($userSectorHash, $sector->getSectorNumber(), $user_id);
+
+
+        $password = $this->getPassword($sectorHash, $addressData['privateHex']);
         return [
-            'sectorHash' => $sectorHash,
-            'address' => $addressData['address']
+            'sectorHash' => $sectorHash,// for decryption by the server after receiving the private key
+            'userSectorHash' => $userSectorHash, // to verify that the address is issued from your server
+            'signatureBlowfish' => \password_hash($password, PASSWORD_BCRYPT), // public
+            'address' => $addressData['address'] // public
         ];
     }
 
     /**
+     *
+     * We deliberately complicate the calculation of the hash in order
+     * to avoid brute force by the creator of the pool, which has a sectorHash param!!!
+     *
+     * @param string $sectorHash
+     * @param string $privateHex
+     *
+     * @return string
+     */
+    private function getPassword(string $sectorHash, string $privateHex): string
+    {
+        $password = hash('sha256', $sectorHash . $privateHex);
+        $quantity = rand(5, 50);
+        for ($i = 0; $i < $quantity; $i++) {
+            $password = hash('sha256', $password);
+        }
+        return $password;
+    }
+
+    /**
+     * @param string $token
      * @param Sector $sector
      * @param int    $user_id
      *
      * @return array
+     * @throws \Exception
      */
+    #[ArrayShape(['privateHex' => "string", 'address' => "String"])]
     public function generateSectorAddress(string $token, Sector $sector, int $user_id): array
     {
-        if ($token !== $this->config->getToken()) {
+        if ($token !== $this->token) {
             throw new \InvalidArgumentException('Token is not valid!');
         }
         $range = $sector->getRange()->range()->sub(1230);
@@ -82,13 +114,14 @@ class SignatureGenerator
 
 
     /**
+     * @param int $puzzleNumber
      * @param int $sectorNumber
      *
      * @return string
      */
     public function getSectorHash(int $puzzleNumber, int $sectorNumber): string
     {
-        return hash('sha256', $this->config->getSecret() . $puzzleNumber . $sectorNumber);
+        return hash('sha256', $this->secret . $puzzleNumber . $sectorNumber);
     }
 
     /**
@@ -100,19 +133,21 @@ class SignatureGenerator
      */
     public function getUserSectorHash(int $puzzleNumber, int $sectorNumber, int $user_id): string
     {
-        return hash('sha256', $this->config->getSecret() . $puzzleNumber . $sectorNumber . $user_id);
+        return hash('sha256', $this->secret . $puzzleNumber . $sectorNumber . $user_id);
     }
 
     /**
      * @param int    $puzzleNumber
      * @param string $hash
+     * @param int    $userId
+     * @param int    $sectorExponent
      *
      * @return bool
      */
     public function checkSectorHash(int $puzzleNumber, string $hash, int $userId, int $sectorExponent = 40): bool
     {
         if ($this->log) {
-            $data = $this->log->getSectorData($hash);
+            $data = $this->log->getSector($hash);
             if (!empty($data)) {
                 return true;
             }
@@ -120,7 +155,7 @@ class SignatureGenerator
         $countSectors = (int)(new Gmp(2))->pow($puzzleNumber - 1)->div((new Gmp(2))->pow($sectorExponent))->str();
         //  long!!!
         for ($i = 1; $i <= $countSectors; $i++) {
-            if (hash('sha256', $this->config->getSecret() . $puzzleNumber . $i) === $hash) {
+            if ($this->getUserSectorHash($puzzleNumber, $i, $userId) === $hash) {
                 return true;
             }
         }

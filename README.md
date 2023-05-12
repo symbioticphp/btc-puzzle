@@ -1,4 +1,5 @@
 ## Verification Address Generator for Bitcoin puzzle range
+
 ```
 Pool server   <-- Client.exe Request range
 
@@ -28,6 +29,7 @@ Pool Server  <-- Client sending the found verification addresses to the pool
 Pool Server  --> Check signature addresses and signatory range
        
 ```
+
 To form the verification addresses of the issued range, several remote participant servers are used
 enumeration, which eliminates the fake passage of the range even by the creator of the enumeration pool.
 
@@ -42,9 +44,11 @@ To create a verification address, use:
 - sector number
 - user ID of the user (for which the sector is issued)
 
-The algorithm is simple, a hash is created based on the data and the first characters of the number are taken from it, which are substituted inside
+The algorithm is simple, a hash is created based on the data and the first characters of the number are taken from it,
+which are substituted inside
 range.
-As an answer, a verification address and a hash of the sector are given, which is formed from a secret phrase, a puzzle and a number
+As an answer, a verification address and a hash of the sector are given, which is formed from a secret phrase, a puzzle
+and a number
 sectors.
 
 Example:
@@ -67,11 +71,12 @@ range           = ffffffffff   // 2^40 we need the number of characters
                  strlen( range )
 addressHashLen  = 10
 
-Sector signature for subsequent verification that the address was issued from your server.
-                =  99980898683611033808737021fe85d29f08d02ef13076071348e330418ba8a4
-sectorHash      = sha256(secret + puzzle + sectorNumber)
+Sector hash for crypt password
+                      sha256(secret + puzzle + sectorNumber)
+sectorHash         =  99980898683611033808737021fe85d29f08d02ef13076071348e330418ba8a4
 
-Sector hash for user
+Sector signature for subsequent verification that the address was issued from your server.
+
                 sha256(secret + puzzle + sectorNumber + userID)
 userSectorHash     = f87e6a01e99458e2121e1bf53985b8f98899cbc44458b53a1d627cf1381ea428
 
@@ -80,14 +85,24 @@ Address private key prefix
 startHexPrefix = 3eda700 - remove characters equal to the length of the range
 
                  startHexPrefix +  substr(userSectorHash, 0, addressHashLen (10) )
-addressHex     = 3eda700f87e6a01e9 - range prefix and 10 sector hash characters for the user
+addressPrivHex     = 3eda700f87e6a01e9 - range prefix and 10 sector hash characters for the user
 
-address        = 1BU1bkkW3YX1NyBxmaLpP48pe2uvh67jX
+address            = 1BU1bkkW3YX1NyBxmaLpP48pe2uvh67jX
+
+We perform a hashing operation 5-50 several times
+                      sha256(sectorHash + addressPrivHex) 
+passwordSHA256      = bde3eafd6fd1ca80870601f32e0c2f592462e446f7c5139e4ee9eb9230a10609
+
+
+password = BLOWFISH( passwordSHA256 )
 
 Answer:
 
 'sectorHash' : '99980898683611033808737021fe85d29f08d02ef13076071348e330418ba8a4',
 'address'     : '1BU1bkkW3YX1NyBxmaLpP48pe2uvh67jX'
+'userSectorHash' : 'f87e6a01e99458e2121e1bf53985b8f98899cbc44458b53a1d627cf1381ea428',
+'signatureBlowfish' => '$2y$10$n5Ehd0YUVvy1tW2nLaMRTu6TGE84FY2mCbFwMDndTk1yBSf2J7pui'
+            
 
 ```
 
@@ -96,7 +111,8 @@ Answer:
 To use, you must create a secret phrase with a length of at least 20 characters. No one should know her otherwise
 will be able to generate range addresses on your behalf.
 
-The token is needed to protect against enumeration, otherwise each user will be able to enumerate all sectors and get verification
+The token is needed to protect against enumeration, otherwise each user will be able to enumerate all sectors and get
+verification
 addresses before passing the ranges.
 
 ```php
@@ -111,6 +127,7 @@ $config = new \Symbiotic\BtcPuzzle\Config(
 ```
 
 For convenient work, there is a controller that accepts GET parameters for operation:
+
 ```php
 $controller = new \Symbiotic\BtcPuzzle\SignatureController($config, $_GET);
 
@@ -118,8 +135,10 @@ echo $controller->dispatch();
 ```
 
 ```php
+Example:
+
 // Verification address generator
-$generator = new \Symbiotic\BtcPuzzle\SignatureGenerator($config); 
+$generator = new \Symbiotic\BtcPuzzle\SignatureGenerator($config->getToken(), $config->getSecret()); 
 
 // Puzzle Range 
 $sector = new \Symbiotic\BtcPuzzle\Sector($puzzleId, $sectorNumber);
@@ -130,9 +149,13 @@ $address = $generator->generateSectorAddress($token, $sector, $user_id);
 // hash of the sector for subsequent authentication of the issuance by the user's server
 $sectorHash = $generator->getSectorHash($puzzleId, $sectorNumber);
 
+$signature = $generator->generateSectorSignature($token, $sector, $user_id);
+
 echo json_encode([
-'sectorHash' => $sectorHash,
- 'address' => $address['address']/*we give only the address without the private key*/
+    'sectorHash' => $signature['sectorHash'],
+    'userSectorHash' => $signature['userSectorHash']
+    'signatureBlowfish' => $signature['signatureBlowfish']
+    'address' => $signature['address']/*we give only the address without the private key*/
  ]);
 
 ```
