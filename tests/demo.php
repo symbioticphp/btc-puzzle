@@ -55,7 +55,7 @@ echo PHP_EOL . 'Sector range puzzle: ' . $sectorRange->getPuzzleId() . PHP_EOL;
 echo 'Sector range start:  ' . $sectorRange->getStart()->str(16) . PHP_EOL;
 echo 'Sector range end:    ' . $sectorRange->getEnd()->str(16) . PHP_EOL;
 
-$sectorids = $sectorRange->getSectorsIds();
+$sectorids = $sectorRange->getSectorsNumbers();
 
 echo 'Sector range sectors: ' . implode(',', $sectorids) . PHP_EOL;
 
@@ -67,7 +67,7 @@ $range = new \Symbiotic\BtcPuzzle\Range(
 echo PHP_EOL . 'Range puzzle x4: ' . $range->getPuzzleId() . PHP_EOL;
 echo 'Range start: ' . $range->getStart()->str(16) . PHP_EOL;
 echo 'Range end: ' . $range->getEnd()->str(16) . PHP_EOL;
-$sectorids = $range->getSectorsIds();
+$sectorids = $range->getSectorsNumbers();
 
 echo 'Range sectors: ' . implode(',', $sectorids) . PHP_EOL;
 

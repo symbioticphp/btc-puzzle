@@ -48,7 +48,7 @@ class Range
     /**
      * @return array|int[]
      */
-    public function getSectorsIds(): array
+    public function getSectorsNumbers(): array
     {
         $puzzleRangeStart = (new Gmp(2))->pow($this->puzzleId - 1);
         $amount = (new Gmp(2))->pow($this->sectorsExponent);
@@ -89,7 +89,7 @@ class Range
     public function getSectors(): array
     {
         $result = [];
-        foreach ($this->getSectorsIds() as $id) {
+        foreach ($this->getSectorsNumbers() as $id) {
             $result[$id] = new Sector($this->getPuzzleId(), $id, $this->getSectorExponent());
         }
         return $result;

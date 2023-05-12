@@ -14,12 +14,12 @@ class Gmp
     /**
      * @param string|int|\GMP|Gmp $number
      */
-    public function __construct(string|int|\GMP|Gmp $number)
+    public function __construct(string|int|\GMP|Gmp $number, int $format = 10)
     {
         if (self::isGmp()) {
-            $this->number = \gmp_strval(\gmp_init((string)$number, 10));
+            $this->number = \gmp_strval(\gmp_init((string)$number, $format), 10);
         } else {
-            $this->number = (string)$number;
+            $this->number = $format === 10 ? (string)$number : \base_convert($number, $format, 10);
         }
     }
 
@@ -121,6 +121,7 @@ class Gmp
     public function comp(int|string|\GMP|Gmp $number): int
     {
         if (self::isGmp()) {
+
             return \gmp_cmp(
                 $this->number,
                 \gmp_init((string)$number, 10)
