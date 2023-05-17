@@ -66,7 +66,7 @@ class SignatureGenerator
     private function getPassword(string $sectorHash, string $privateHex): string
     {
         $password = hash('sha256', $sectorHash . $privateHex);
-        $quantity = rand(5, 50);
+        $quantity = rand(3, 10);
         for ($i = 0; $i < $quantity; $i++) {
             $password = hash('sha256', $password);
         }
